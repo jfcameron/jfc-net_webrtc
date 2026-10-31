@@ -1,0 +1,70 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "cacheVariables": {
+        "JFCNET_WEBRTC_BUILD_TESTS": "ON",
+        "JFCNET_WEBRTC_BUILD_DOCS": "OFF"
+      }
+    },
+    {
+      "name": "linux-docs",
+      "displayName": "Linux / documentation",
+      "inherits": "base",
+      "cacheVariables": {
+        "JFCNET_WEBRTC_BUILD_TESTS": "OFF",
+        "JFCNET_WEBRTC_BUILD_DOCS": "ON"
+      }
+    },
+    {
+      "name": "emscripten",
+      "displayName": "Emscripten / wasm",
+      "description": "Configure with `emcmake cmake --preset emscripten`, which supplies the toolchain file.",
+      "inherits": "base",
+      "cacheVariables": {
+        "JFCNET_WEBRTC_BUILD_TESTS": "OFF",
+        "JFCNET_WEBRTC_BUILD_DOCS": "OFF"
+      }
+    },
+    {
+      "name": "emscripten-test",
+      "displayName": "Emscripten / WebRTC tests",
+      "inherits": "emscripten",
+      "cacheVariables": {
+        "JFCNET_WEBRTC_BUILD_TESTS": "ON",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra -Werror -fexceptions",
+        "CMAKE_EXE_LINKER_FLAGS": "-fexceptions -sALLOW_MEMORY_GROWTH",
+        "CMAKE_CROSSCOMPILING_EMULATOR": "node",
+        "JFCNET_WEBRTC_BUILD_PROBE": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "emscripten",
+      "configurePreset": "emscripten"
+    },
+    {
+      "name": "emscripten-test",
+      "configurePreset": "emscripten-test"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "emscripten-test",
+      "configurePreset": "emscripten-test",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

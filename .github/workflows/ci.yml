@@ -1,0 +1,114 @@
+# © Joseph Cameron - MIT License
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  emscripten:
+    name: emscripten (wasm)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: latest
+
+      - name: report the toolchain
+        run: emcc --version
+
+      - name: install browser test tools
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium firefox
+
+      - name: configure
+        run: emcmake cmake --preset emscripten-test -DJFCNET_WEBRTC_TEST_REAL_BROWSERS=ON
+
+      - name: build
+        run: cmake --build --preset emscripten-test
+
+      - name: test
+        run: ctest --preset emscripten-test
+
+  interface-latest:
+    name: emscripten, against the interface's latest commit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: take the interface's latest commit
+        run: |
+          git -C extern/jfc-net fetch origin HEAD
+          git -C extern/jfc-net checkout --detach FETCH_HEAD
+          git -C extern/jfc-net submodule update --init --recursive
+          git -C extern/jfc-net log -1 --oneline
+
+      - uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: latest
+
+      - name: report the toolchain
+        run: emcc --version
+
+      - name: configure
+        run: emcmake cmake --preset emscripten-test
+
+      - name: build
+        run: cmake --build --preset emscripten-test
+
+      - name: test
+        run: ctest --preset emscripten-test
+
+  docs:
+    name: doxygen
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: install doxygen and graphviz
+        run: sudo apt-get update && sudo apt-get install -y doxygen graphviz
+
+      - name: generate
+        run: cmake --preset linux-docs
+
+      - name: upload for github pages
+        if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: out/build/linux-docs/docs
+
+  pages:
+    name: publish to github pages
+    needs: docs
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5
