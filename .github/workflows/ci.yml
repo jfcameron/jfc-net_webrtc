@@ -27,6 +27,13 @@ jobs:
       - name: report the toolchain
         run: emcc --version
 
+      - name: every header compiles alone, warnings are errors
+        run: |
+          for header in $(git ls-files 'include/*.h' | sed 's#^include/##'); do
+            printf '#include <%s>\nint main(){}\n' "$header" > alone.cpp
+            em++ -std=c++20 -Wall -Wextra -Wpedantic -Werror -Iinclude -Iextern/jfc-net/include -c alone.cpp -o /dev/null
+          done
+
       - name: install browser test tools
         run: |
           npm install --no-save --package-lock=false playwright
